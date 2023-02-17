@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import './App.css';
+import { fetchPosts, fetchUserById } from './api/request';
 import FullPost from './components/FullPost/FullPost';
 import Post from './components/Post/Post';
 
@@ -8,33 +9,61 @@ function App() {
   const [posts, setPosts] = useState([]);
 
   const [visible, setVisible] = useState(true);
+  const [selectedId, setSelectedId] = useState(null);
 
   useEffect(() => {
-    fetch('https://jsonplaceholder.typicode.com/posts?_limit=10')
-      .then((res) => res.json())
-      .then((posts) => {
-        setPosts(posts);
-      });
+    (async () => {
+      let posts = await fetchPosts('_limit=3');
+
+      posts = await Promise.all(
+        posts.map(async (post) => {
+          const user = await fetchUserById(post.userId);
+          return {
+            ...post,
+            author: user.name,
+          };
+        })
+      );
+      setPosts(posts);
+    })();
+    // fetchPosts('_limit=3')
+    //   .then((posts) => {
+    //     return Promise.all(
+    //       posts.map((post) => {
+    //         return fetchUserById(post.userId).then((user) => {
+    //           return {
+    //             ...post,
+    //             author: user.name,
+    //           };
+    //         });
+    //       })
+    //     );
+    //   })
+    //   .then((posts) => setPosts(posts));
   }, []);
 
-  // useEffect(() => {
-  //   console.log("[Blog] update");
-  // }, [visible]);
+  const onPostSelected = (id) => setSelectedId(id);
 
-  // console.log("[Blog] render");
   return (
     <div className="blog">
       <h1>Простой блог</h1>
 
       <div className="list">
         {posts.map((post) => {
-          return <Post key={post.id} title={post.title} author={post.author} />;
+          return (
+            <Post
+              key={post.id}
+              title={post.title}
+              author={post.author}
+              selected={() => onPostSelected(post.id)}
+            />
+          );
         })}
       </div>
 
       <button onClick={() => setVisible((v) => !v)}>Toggle</button>
 
-      {visible && <FullPost />}
+      {visible && <FullPost selectedId={selectedId} />}
     </div>
   );
 }
